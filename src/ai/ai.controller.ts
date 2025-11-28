@@ -18,28 +18,27 @@ import { JwtAuthGuard } from '../auth/jwt.guard';
 export class AiController {
   constructor(private readonly aiService: AiService) {}
 
-  // ✅ إرسال سؤال جديد (وإنشاء شات جديد تلقائياً)
+  // ✅ التعديل هنا: نمرر chatId الموجود في الـ dto
   @Post('ask')
   async ask(@Body() dto: AskDto, @Req() req: any) {
-    const userId = req.user.id; // من JWT
-    return this.aiService.ask(dto.message, dto.lang, userId);
+    const userId = req.user.id;
+    // انتبه هون: زدنا dto.chatId
+    return this.aiService.ask(dto.message, dto.lang, userId, dto.chatId);
   }
 
-  // ✅ جلب كل الشاتات لليوزر
+  // ... باقي الكود زي ما هو (getChats, getChatMessages, deleteChat)
   @Get('chats')
   async getChats(@Req() req: any) {
     const userId = req.user.id;
     return this.aiService.getAllChats(userId);
   }
 
-  // ✅ جلب رسائل شات معين
   @Get(':id/messages')
   async getChatMessages(@Param('id') id: string, @Req() req: any) {
     const userId = req.user.id;
     return this.aiService.getChatMessages(Number(id), userId);
   }
 
-  // ✅ حذف شات كامل
   @Delete(':id')
   async deleteChat(@Param('id') id: string, @Req() req: any) {
     const userId = req.user.id;
