@@ -15,7 +15,7 @@ export class AskDto {
   @IsEnum(['ar', 'en'])
   lang: 'ar' | 'en';
 
-  // ✅ ضيف هذا السطر عشان نستقبل رقم الشات (اختياري)
+ 
   @IsOptional()
   @IsNumber()
   chatId?: number;

@@ -15,6 +15,8 @@ import { AuthService } from './auth.service';
 import { AuthGuard } from '@nestjs/passport';
 import { LoginDto } from './dto/login.dto';
 import { SignUpDto } from './dto/signup.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { ConfigService } from '@nestjs/config';
 
 @Controller('auth')
@@ -45,6 +47,29 @@ export class AuthController {
     const userId = req.user.id;
     const user = await this.authService.getUserProfile(userId);
     return { message: 'User profile fetched successfully', user };
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Patch('profile/update')
+  async updateProfile(@Req() req, @Body() dto: UpdateProfileDto) {
+    const userId = req.user.id;
+    const updatedUser = await this.authService.updateUserProfile(userId, dto);
+    return {
+      message: 'Profile updated successfully',
+      user: updatedUser,
+    };
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Patch('profile/password')
+  async changePassword(@Req() req, @Body() dto: ChangePasswordDto) {
+    const userId = req.user.id;
+    await this.authService.changePassword(
+      userId,
+      dto.oldPassword,
+      dto.newPassword,
+    );
+    return { message: 'Password updated successfully' };
   }
 
   @Post('logout')

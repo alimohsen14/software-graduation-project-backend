@@ -15,6 +15,7 @@ model User {
   email                String    @unique
   password             String?
   country              String?
+   avatar              String? 
   age                  Int?
   gender               Gender
   isSeller             Boolean   @default(false)

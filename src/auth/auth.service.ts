@@ -7,9 +7,10 @@ import * as crypto from 'crypto';
 import { JwtService } from '@nestjs/jwt';
 import { SignUpDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
-import { Provider, Gender } from '@prisma/client';
+import { Provider, Gender, User } from '@prisma/client';
 
 interface GoogleTokenResponse {
   access_token: string;
@@ -211,16 +212,93 @@ export class AuthService {
   }
 
   // ----------------------------------------------------
-  // 🔹 PROFILE
+  // 🔹 GET USER PROFILE
   // ----------------------------------------------------
   async getUserProfile(userId: number) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        provider: true,
+        age: true,
+        gender: true,
+        country: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
 
-    if (!user) throw new BadRequestException('User not found');
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
 
     return user;
+  }
+
+  // ----------------------------------------------------
+  // 🔹 UPDATE USER PROFILE
+  // ----------------------------------------------------
+  async updateUserProfile(userId: number, dto: UpdateProfileDto): Promise<Partial<User>> {
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        name: dto.name,
+        age: dto.age,
+        gender: dto.gender,
+        country: dto.country,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        provider: true,
+        age: true,
+        gender: true,
+        country: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    return user;
+  }
+
+  // ----------------------------------------------------
+  // 🔹 CHANGE PASSWORD
+  // ----------------------------------------------------
+  async changePassword(userId: number, oldPassword: string, newPassword: string): Promise<void> {
+    // Get the user with password
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    // Check if user is a Google user
+    if (user.provider === Provider.GOOGLE) {
+      throw new BadRequestException('Google users cannot change password');
+    }
+
+    // Verify old password
+    if (!user.password) {
+      throw new BadRequestException('Password not set for this user');
+    }
+    const isPasswordValid = await bcrypt.compare(oldPassword, user.password);
+    if (!isPasswordValid) {
+      throw new BadRequestException('Invalid current password');
+    }
+
+    // Hash and update the new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedPassword },
+    });
   }
 
   // ----------------------------------------------------

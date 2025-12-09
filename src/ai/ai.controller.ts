@@ -18,15 +18,15 @@ import { JwtAuthGuard } from '../auth/jwt.guard';
 export class AiController {
   constructor(private readonly aiService: AiService) {}
 
-  // ✅ التعديل هنا: نمرر chatId الموجود في الـ dto
+
   @Post('ask')
   async ask(@Body() dto: AskDto, @Req() req: any) {
     const userId = req.user.id;
-    // انتبه هون: زدنا dto.chatId
+    
     return this.aiService.ask(dto.message, dto.lang, userId, dto.chatId);
   }
 
-  // ... باقي الكود زي ما هو (getChats, getChatMessages, deleteChat)
+
   @Get('chats')
   async getChats(@Req() req: any) {
     const userId = req.user.id;
