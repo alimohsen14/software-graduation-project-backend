@@ -66,7 +66,7 @@ export class AuthService {
       },
     });
 
-    const tokens = this.generateTokens(user.id);
+    const tokens = await this.generateTokens(user.id);
 
     await this.prisma.user.update({
       where: { id: user.id },
@@ -88,8 +88,7 @@ export class AuthService {
 
     const isMatch = await bcrypt.compare(dto.password, user.password ?? '');
     if (!isMatch) throw new BadRequestException('Invalid credentials');
-
-    const tokens = this.generateTokens(user.id);
+    const tokens = await this.generateTokens(user.id);
 
     await this.prisma.user.update({
       where: { id: user.id },
@@ -157,7 +156,7 @@ export class AuthService {
       isNewUser = true;
     }
 
-    const tokens = this.generateTokens(user.id);
+    const tokens = await this.generateTokens(user.id);
 
     await this.prisma.user.update({
       where: { id: user.id },
@@ -202,7 +201,7 @@ export class AuthService {
       },
     });
 
-    const newTokens = this.generateTokens(user.id);
+    const newTokens = await this.generateTokens(user.id);
 
     return {
       message: 'Google signup completed',
@@ -240,7 +239,10 @@ export class AuthService {
   // ----------------------------------------------------
   // 🔹 UPDATE USER PROFILE
   // ----------------------------------------------------
-  async updateUserProfile(userId: number, dto: UpdateProfileDto): Promise<Partial<User>> {
+  async updateUserProfile(
+    userId: number,
+    dto: UpdateProfileDto,
+  ): Promise<Partial<User>> {
     const user = await this.prisma.user.update({
       where: { id: userId },
       data: {
@@ -268,7 +270,11 @@ export class AuthService {
   // ----------------------------------------------------
   // 🔹 CHANGE PASSWORD
   // ----------------------------------------------------
-  async changePassword(userId: number, oldPassword: string, newPassword: string): Promise<void> {
+  async changePassword(
+    userId: number,
+    oldPassword: string,
+    newPassword: string,
+  ): Promise<void> {
     // Get the user with password
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -294,7 +300,7 @@ export class AuthService {
 
     // Hash and update the new password
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    
+
     await this.prisma.user.update({
       where: { id: userId },
       data: { password: hashedPassword },
@@ -384,16 +390,24 @@ export class AuthService {
   // ----------------------------------------------------
   // 🔹 TOKEN GENERATOR
   // ----------------------------------------------------
-  private generateTokens(userId: number) {
-    const accessToken = this.jwtService.sign(
-      { id: userId },
-      { expiresIn: '15m' },
-    );
+  private async generateTokens(userId: number) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, isSeller: true, isAdmin: true },
+    });
 
-    const refreshToken = this.jwtService.sign(
-      { id: userId },
-      { expiresIn: '7d' },
-    );
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    const payload = {
+      id: user.id,
+      email: user.email,
+      isAdmin: user.isAdmin,
+    };
+
+    const accessToken = this.jwtService.sign(payload, { expiresIn: '15m' });
+    const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
 
     return { accessToken, refreshToken };
   }
