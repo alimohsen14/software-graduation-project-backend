@@ -7,37 +7,71 @@ import { UpdateProductDto } from './dto/update-product.dto';
 export class ProductService {
   constructor(private prisma: PrismaService) {}
 
-  // Add a new product (Admin only)
+  // =========================
+  // Create product (Admin)
+  // =========================
   async create(dto: CreateProductDto) {
-    return this.prisma.product.create({ data: dto });
+    return this.prisma.product.create({
+      data: dto,
+    });
   }
 
-  // Get all products for shop (public)
+  // =========================
+  // Get all products (Public)
+  // =========================
   async findAll() {
     return this.prisma.product.findMany({
       orderBy: { createdAt: 'desc' },
     });
   }
 
-  // Get product by id
+  // =========================
+  // Get product by ID
+  // =========================
   async findOne(id: number) {
-    const product = await this.prisma.product.findUnique({ where: { id } });
+    const product = await this.prisma.product.findUnique({
+      where: { id },
+    });
 
-    if (!product) throw new NotFoundException('Product not found');
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
 
     return product;
   }
 
-  // Update product (Admin only)
+  // =========================
+  // Update product (Admin)
+  // =========================
   async update(id: number, dto: UpdateProductDto) {
+    const exists = await this.prisma.product.findUnique({
+      where: { id },
+    });
+
+    if (!exists) {
+      throw new NotFoundException('Product not found');
+    }
+
     return this.prisma.product.update({
       where: { id },
       data: dto,
     });
   }
 
-  // Delete product (Admin only)
+  // =========================
+  // Delete product (Admin)
+  // =========================
   async remove(id: number) {
-    return this.prisma.product.delete({ where: { id } });
+    const exists = await this.prisma.product.findUnique({
+      where: { id },
+    });
+
+    if (!exists) {
+      throw new NotFoundException('Product not found');
+    }
+
+    return this.prisma.product.delete({
+      where: { id },
+    });
   }
 }

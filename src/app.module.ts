@@ -5,9 +5,17 @@ import { AuthModule } from './auth/auth.module';
 import { AiModule } from './ai/ai.module';
 import { ProductModule } from './product/product.module';
 import { OrderModule } from './order/order.module';
+import { UploadsModule } from './uploads/uploads.module';
 
 @Module({
-  imports: [UsersModule, AuthModule, AiModule, ProductModule, OrderModule],
+  imports: [
+    UsersModule,
+    AuthModule,
+    AiModule,
+    ProductModule,
+    OrderModule,
+    UploadsModule,
+  ],
   providers: [PrismaService],
   exports: [PrismaService],
 })
