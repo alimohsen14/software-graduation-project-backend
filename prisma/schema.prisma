@@ -30,6 +30,23 @@ model User {
 
   chats                AiChat[]
   orders               Order[]
+  notifications        Notification[]
+  store                Store?
+}
+
+model Store {
+  id          Int       @id @default(autoincrement())
+  name        String
+  description String?
+  logo        String?
+  ownerId     Int       @unique
+  isOfficial  Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+
+  owner       User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  products    Product[]
+
+  @@index([ownerId])
 }
 
 model AiChat {
@@ -62,13 +79,17 @@ model Product {
   image            String
   stock            Int       @default(0)
   category         String
-  badge            String?
+  isHot            Boolean   @default(false)
   rating           Float?    @default(0)
   reviewsCount     Int?      @default(0)
+  storeId          Int?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
+  store            Store?    @relation(fields: [storeId], references: [id], onDelete: Cascade)
   orderItems       OrderItem[]
+
+  @@index([storeId])
 }
 
 enum Gender {
@@ -79,6 +100,18 @@ enum Gender {
 enum Provider {
   LOCAL
   GOOGLE
+}
+
+enum AdminStatus {
+  ADMIN_PENDING
+  ADMIN_APPROVED
+  ADMIN_REJECTED
+}
+
+enum NotificationType {
+  ORDER_CREATED
+  ORDER_APPROVED
+  ORDER_REJECTED
 }
 
 enum OrderStatus {
@@ -98,15 +131,22 @@ model Order {
   address   String?
   phone     String?
 
+  // Admin approval fields
+  adminStatus     AdminStatus @default(ADMIN_PENDING)
+  approvedAt      DateTime?
+  rejectedAt      DateTime?
+  rejectionReason String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  items     OrderItem[]
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items         OrderItem[]
+  notifications Notification[]
 
   @@index([userId])
   @@index([status])
+  @@index([adminStatus])
 }
 
 model OrderItem {
@@ -121,4 +161,21 @@ model OrderItem {
 
   @@index([orderId])
   @@index([productId])
+}
+
+model Notification {
+  id        Int              @id @default(autoincrement())
+  userId    Int
+  type      NotificationType
+  title     String
+  message   String
+  isRead    Boolean          @default(false)
+  orderId   Int?
+  createdAt DateTime         @default(now())
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  order Order? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([orderId])
 }
