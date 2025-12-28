@@ -5,13 +5,22 @@ CREATE TYPE "Gender" AS ENUM ('MALE', 'FEMALE');
 CREATE TYPE "Provider" AS ENUM ('LOCAL', 'GOOGLE');
 
 -- CreateEnum
+CREATE TYPE "StoreType" AS ENUM ('ADMIN', 'SELLER');
+
+-- CreateEnum
+CREATE TYPE "SellerRequestStatus" AS ENUM ('PENDING', 'APPROVED', 'REJECTED');
+
+-- CreateEnum
+CREATE TYPE "OrderItemStatus" AS ENUM ('PENDING', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'SHIPPED', 'DELIVERED');
+
+-- CreateEnum
 CREATE TYPE "AdminStatus" AS ENUM ('ADMIN_PENDING', 'ADMIN_APPROVED', 'ADMIN_REJECTED');
 
 -- CreateEnum
 CREATE TYPE "NotificationType" AS ENUM ('ORDER_CREATED', 'ORDER_APPROVED', 'ORDER_REJECTED');
 
 -- CreateEnum
-CREATE TYPE "OrderStatus" AS ENUM ('PENDING', 'PAID', 'CANCELED', 'SHIPPED');
+CREATE TYPE "OrderStatus" AS ENUM ('PENDING', 'PAID', 'CANCELED', 'SHIPPED', 'COMPLETED');
 
 -- CreateTable
 CREATE TABLE "User" (
@@ -42,11 +51,30 @@ CREATE TABLE "Store" (
     "name" TEXT NOT NULL,
     "description" TEXT,
     "logo" TEXT,
+    "image" TEXT,
+    "type" "StoreType" NOT NULL DEFAULT 'SELLER',
     "ownerId" INTEGER NOT NULL,
-    "isOfficial" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "Store_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "SellerRequest" (
+    "id" SERIAL NOT NULL,
+    "userId" INTEGER NOT NULL,
+    "storeName" TEXT NOT NULL,
+    "storeImage" TEXT,
+    "message" TEXT,
+    "productType" TEXT,
+    "region" TEXT,
+    "status" "SellerRequestStatus" NOT NULL DEFAULT 'PENDING',
+    "rejectionReason" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "processedAt" TIMESTAMP(3),
+
+    CONSTRAINT "SellerRequest_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -81,10 +109,11 @@ CREATE TABLE "Product" (
     "image" TEXT NOT NULL,
     "stock" INTEGER NOT NULL DEFAULT 0,
     "category" TEXT NOT NULL,
+    "badge" TEXT,
     "isHot" BOOLEAN NOT NULL DEFAULT false,
     "rating" DOUBLE PRECISION DEFAULT 0,
     "reviewsCount" INTEGER DEFAULT 0,
-    "storeId" INTEGER,
+    "storeId" INTEGER NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -115,8 +144,10 @@ CREATE TABLE "OrderItem" (
     "id" SERIAL NOT NULL,
     "orderId" INTEGER NOT NULL,
     "productId" INTEGER NOT NULL,
+    "storeId" INTEGER NOT NULL,
     "quantity" INTEGER NOT NULL,
     "priceAtPurchase" DOUBLE PRECISION NOT NULL,
+    "status" "OrderItemStatus" NOT NULL,
 
     CONSTRAINT "OrderItem_pkey" PRIMARY KEY ("id")
 );
@@ -145,6 +176,12 @@ CREATE UNIQUE INDEX "Store_ownerId_key" ON "Store"("ownerId");
 CREATE INDEX "Store_ownerId_idx" ON "Store"("ownerId");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "SellerRequest_userId_key" ON "SellerRequest"("userId");
+
+-- CreateIndex
+CREATE INDEX "SellerRequest_status_idx" ON "SellerRequest"("status");
+
+-- CreateIndex
 CREATE INDEX "Product_storeId_idx" ON "Product"("storeId");
 
 -- CreateIndex
@@ -163,6 +200,9 @@ CREATE INDEX "OrderItem_orderId_idx" ON "OrderItem"("orderId");
 CREATE INDEX "OrderItem_productId_idx" ON "OrderItem"("productId");
 
 -- CreateIndex
+CREATE INDEX "OrderItem_storeId_idx" ON "OrderItem"("storeId");
+
+-- CreateIndex
 CREATE INDEX "Notification_userId_idx" ON "Notification"("userId");
 
 -- CreateIndex
@@ -170,6 +210,9 @@ CREATE INDEX "Notification_orderId_idx" ON "Notification"("orderId");
 
 -- AddForeignKey
 ALTER TABLE "Store" ADD CONSTRAINT "Store_ownerId_fkey" FOREIGN KEY ("ownerId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SellerRequest" ADD CONSTRAINT "SellerRequest_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "AiChat" ADD CONSTRAINT "AiChat_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -188,6 +231,9 @@ ALTER TABLE "OrderItem" ADD CONSTRAINT "OrderItem_orderId_fkey" FOREIGN KEY ("or
 
 -- AddForeignKey
 ALTER TABLE "OrderItem" ADD CONSTRAINT "OrderItem_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "OrderItem" ADD CONSTRAINT "OrderItem_storeId_fkey" FOREIGN KEY ("storeId") REFERENCES "Store"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Notification" ADD CONSTRAINT "Notification_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;

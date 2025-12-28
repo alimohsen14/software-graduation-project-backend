@@ -1,10 +1,15 @@
 /* eslint-disable */
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { NotificationService } from 'src/notification/notification.service';
+import { OrderItemStatus } from '@prisma/client';
 
 @Injectable()
 export class SellerOrderService {
-    constructor(private prisma: PrismaService) { }
+    constructor(
+        private prisma: PrismaService,
+        private notificationService: NotificationService,
+    ) { }
 
     // =========================
     // Get seller's store
@@ -32,9 +37,7 @@ export class SellerOrderService {
             where: {
                 items: {
                     some: {
-                        product: {
-                            storeId: store.id,
-                        },
+                        storeId: store.id, // Scoped to items in this store
                     },
                 },
             },
@@ -42,24 +45,18 @@ export class SellerOrderService {
             include: {
                 user: {
                     select: {
-                        id: true,
                         name: true,
-                        email: true,
                     },
                 },
                 items: {
                     where: {
-                        product: {
-                            storeId: store.id,
-                        },
+                        storeId: store.id, // ONLY return items for THIS seller's store
                     },
                     include: {
                         product: {
                             select: {
                                 id: true,
                                 name: true,
-                                image: true,
-                                price: true,
                             },
                         },
                     },
@@ -67,76 +64,154 @@ export class SellerOrderService {
             },
         });
 
-        // Calculate store-specific totals
-        return orders.map((order) => {
-            const storeTotal = order.items.reduce(
-                (sum, item) => sum + item.priceAtPurchase * item.quantity,
-                0,
-            );
+        // totalOrders is the count of distinct orders found
+        const totalOrders = orders.length;
+
+        // Map to exact requested frontend shape
+        const mappedOrders = orders.map((order) => {
+            // Temporary debug log as requested
+            console.log("Seller Order Customer:", {
+                orderId: order.id,
+                phone: order.phone,
+                city: order.city
+            });
+
             return {
-                ...order,
-                storeTotal,
+                orderId: order.id,
+                createdAt: order.createdAt,
+                orderStatus: order.status,
+                customer: {
+                    name: order.user?.name || null,
+                    phone: order.phone || null,
+                    city: order.city || null,
+                    address: order.address || null
+                },
+                items: order.items.map(item => {
+                    // Debug log to confirm id is included
+                    console.log("OrderItem.id returned:", item.id);
+
+                    return {
+                        id: item.id,
+                        productId: item.productId,
+                        productName: item.product.name,
+                        quantity: item.quantity,
+                        priceAtPurchase: item.priceAtPurchase,
+                        status: item.status,
+                        rejectReason: (item as any).rejectReason || null
+                    };
+                }),
             };
         });
+
+        return {
+            totalOrders,
+            orders: mappedOrders
+        };
     }
 
     // =========================
-    // Get single order containing seller's products
+    // Update Order Item Status
     // =========================
-    async findOne(userId: number, orderId: number) {
+    // =========================
+    // Approve Order Item
+    // =========================
+    async approveOrderItem(itemId: number, userId: number) {
         const store = await this.getSellerStore(userId);
 
-        const order = await this.prisma.order.findFirst({
+        const item = await this.prisma.orderItem.findFirst({
             where: {
-                id: orderId,
-                items: {
-                    some: {
-                        product: {
-                            storeId: store.id,
-                        },
-                    },
-                },
+                id: itemId,
+                storeId: store.id,
             },
             include: {
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    },
-                },
-                items: {
-                    where: {
-                        product: {
-                            storeId: store.id,
-                        },
-                    },
-                    include: {
-                        product: {
-                            select: {
-                                id: true,
-                                name: true,
-                                image: true,
-                                price: true,
-                            },
-                        },
-                    },
-                },
+                order: true,
+                product: true,
+                store: true
             },
         });
 
-        if (!order) {
-            throw new NotFoundException('Order not found or does not contain your products');
+        if (!item) {
+            throw new NotFoundException('Order item not found or does not belong to your store');
         }
 
-        const storeTotal = order.items.reduce(
-            (sum, item) => sum + item.priceAtPurchase * item.quantity,
-            0,
-        );
+        if (item.status === 'APPROVED' || item.status === 'REJECTED') {
+            throw new BadRequestException(`Item is already ${item.status.toLowerCase()}`);
+        }
 
-        return {
-            ...order,
-            storeTotal,
-        };
+        const updatedItem = await this.prisma.orderItem.update({
+            where: { id: itemId },
+            data: {
+                status: 'APPROVED',
+                rejectReason: null
+            } as any,
+        });
+
+        // Notify Buyer
+        await this.notificationService.createNotification({
+            userId: item.order.userId,
+            type: 'ORDER_ITEM_APPROVED' as any, // Cast to any because prisma client might not have synced yet
+            title: 'Order Item Approved',
+            message: `Your item "${item.product.name}" from ${item.store.name} has been approved.`,
+            orderId: item.orderId,
+        });
+
+        return updatedItem;
+    }
+
+    // =========================
+    // Reject Order Item
+    // =========================
+    async rejectOrderItem(itemId: number, userId: number, reason: string) {
+        const store = await this.getSellerStore(userId);
+
+        const item = await this.prisma.orderItem.findFirst({
+            where: {
+                id: itemId,
+                storeId: store.id,
+            },
+            include: {
+                order: true,
+                product: true,
+                store: true
+            },
+        });
+
+        if (!item) {
+            throw new NotFoundException('Order item not found or does not belong to your store');
+        }
+
+        if (item.status === 'APPROVED' || item.status === 'REJECTED') {
+            throw new BadRequestException(`Item is already ${item.status.toLowerCase()}`);
+        }
+
+        const updatedItem = await this.prisma.$transaction(async (tx) => {
+            // Update status and save reason
+            const result = await tx.orderItem.update({
+                where: { id: itemId },
+                data: {
+                    status: 'REJECTED',
+                    rejectReason: reason
+                } as any,
+            });
+
+            // Restore stock
+            await tx.product.update({
+                where: { id: item.productId },
+                data: { stock: { increment: item.quantity } },
+            });
+
+            return result;
+        });
+
+        // Notify Buyer
+        await this.notificationService.createNotification({
+            userId: item.order.userId,
+            type: 'ORDER_ITEM_REJECTED' as any,
+            title: 'Order Item Rejected',
+            message: `Your item "${item.product.name}" from ${item.store.name} was rejected: ${reason}`,
+            orderId: item.orderId,
+        });
+
+        return updatedItem;
     }
 }

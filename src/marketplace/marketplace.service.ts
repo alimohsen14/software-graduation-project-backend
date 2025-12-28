@@ -5,6 +5,13 @@ import { BadgeService } from 'src/product/badge.service';
 import { MarketplaceQueryDto } from './dto/marketplace-query.dto';
 import { Prisma } from '@prisma/client';
 
+// Store select for consistent response shape
+const storeSelect = {
+    id: true,
+    name: true,
+    logo: true,
+};
+
 @Injectable()
 export class MarketplaceService {
     constructor(
@@ -60,11 +67,7 @@ export class MarketplaceService {
             orderBy,
             include: {
                 store: {
-                    select: {
-                        id: true,
-                        name: true,
-                        isOfficial: true,
-                    },
+                    select: storeSelect,
                 },
             },
         });
@@ -122,11 +125,7 @@ export class MarketplaceService {
             orderBy,
             include: {
                 store: {
-                    select: {
-                        id: true,
-                        name: true,
-                        isOfficial: true,
-                    },
+                    select: storeSelect,
                 },
             },
         });

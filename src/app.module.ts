@@ -10,6 +10,7 @@ import { NotificationModule } from './notification/notification.module';
 import { StoreModule } from './store/store.module';
 import { MarketplaceModule } from './marketplace/marketplace.module';
 import { SellerModule } from './seller/seller.module';
+import { SellerRequestModule } from './seller-request/seller-request.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { SellerModule } from './seller/seller.module';
     StoreModule,
     MarketplaceModule,
     SellerModule,
+    SellerRequestModule,
   ],
   providers: [PrismaService],
   exports: [PrismaService],

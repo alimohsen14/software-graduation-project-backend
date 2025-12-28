@@ -9,6 +9,9 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+//////////////////////
+// USER
+//////////////////////
 model User {
   id                   Int       @id @default(autoincrement())
   name                 String
@@ -28,36 +31,71 @@ model User {
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
-  chats                AiChat[]
-  orders               Order[]
-  notifications        Notification[]
-  store                Store?
+  chats         AiChat[]
+  orders        Order[]
+  notifications Notification[]
+  store         Store?
+  sellerRequest SellerRequest?
+  follows       StoreFollow[]
+  favorites     StoreFavorite[]
 }
 
+//////////////////////
+// STORE
+//////////////////////
 model Store {
   id          Int       @id @default(autoincrement())
   name        String
   description String?
   logo        String?
+  image       String?
+  type        StoreType @default(SELLER)
   ownerId     Int       @unique
-  isOfficial  Boolean   @default(false)
   createdAt   DateTime  @default(now())
 
-  owner       User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  products    Product[]
+  owner      User        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  products   Product[]
+  orderItems OrderItem[]
+  followers  StoreFollow[]
+  favoritedBy StoreFavorite[]
 
   @@index([ownerId])
 }
 
+//////////////////////
+// SELLER REQUEST
+//////////////////////
+model SellerRequest {
+  id              Int                 @id @default(autoincrement())
+  userId          Int                 @unique
+  storeName       String
+  storeImage      String?
+  message         String?
+  productType     String?
+  region          String?
+  status          SellerRequestStatus @default(PENDING)
+  rejectionReason String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  processedAt     DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+}
+
+//////////////////////
+// AI CHAT
+//////////////////////
 model AiChat {
-  id        Int         @id @default(autoincrement())
+  id        Int      @id @default(autoincrement())
   title     String
   userId    Int
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  messages  AiMessage[]
+  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages AiMessage[]
 }
 
 model AiMessage {
@@ -67,71 +105,48 @@ model AiMessage {
   content   String
   createdAt DateTime @default(now())
 
-  chat      AiChat   @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  chat AiChat @relation(fields: [chatId], references: [id], onDelete: Cascade)
 }
 
+//////////////////////
+// PRODUCT
+//////////////////////
 model Product {
-  id               Int       @id @default(autoincrement())
+  id               Int      @id @default(autoincrement())
   name             String
   shortDescription String?
   fullDescription  String?
   price            Float
   image            String
-  stock            Int       @default(0)
+  stock            Int      @default(0)
   category         String
-  isHot            Boolean   @default(false)
-  rating           Float?    @default(0)
-  reviewsCount     Int?      @default(0)
-  storeId          Int?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  badge            String?
+  isHot            Boolean  @default(false)
+  rating           Float?   @default(0)
+  reviewsCount     Int?     @default(0)
+  storeId          Int
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  store            Store?    @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  orderItems       OrderItem[]
+  store      Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
 
   @@index([storeId])
 }
 
-enum Gender {
-  MALE
-  FEMALE
-}
-
-enum Provider {
-  LOCAL
-  GOOGLE
-}
-
-enum AdminStatus {
-  ADMIN_PENDING
-  ADMIN_APPROVED
-  ADMIN_REJECTED
-}
-
-enum NotificationType {
-  ORDER_CREATED
-  ORDER_APPROVED
-  ORDER_REJECTED
-}
-
-enum OrderStatus {
-  PENDING
-  PAID
-  CANCELED
-  SHIPPED
-}
-
+//////////////////////
+// ORDER
+//////////////////////
 model Order {
   id        Int         @id @default(autoincrement())
   userId    Int
   total     Float
   status    OrderStatus @default(PENDING)
 
-  city      String?
-  address   String?
-  phone     String?
+  city    String?
+  address String?
+  phone   String?
 
-  // Admin approval fields
   adminStatus     AdminStatus @default(ADMIN_PENDING)
   approvedAt      DateTime?
   rejectedAt      DateTime?
@@ -149,20 +164,31 @@ model Order {
   @@index([adminStatus])
 }
 
+//////////////////////
+// ORDER ITEM (SPLIT)
+//////////////////////
 model OrderItem {
-  id              Int    @id @default(autoincrement())
+  id              Int             @id @default(autoincrement())
   orderId         Int
   productId       Int
+  storeId         Int
   quantity        Int
   priceAtPurchase Float
+  status          OrderItemStatus
+  rejectReason    String?
 
   order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  store   Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
   @@index([orderId])
   @@index([productId])
+  @@index([storeId])
 }
 
+//////////////////////
+// NOTIFICATION
+//////////////////////
 model Notification {
   id        Int              @id @default(autoincrement())
   userId    Int
@@ -178,4 +204,87 @@ model Notification {
 
   @@index([userId])
   @@index([orderId])
+}
+
+model StoreFollow {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  storeId   Int
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, storeId])
+  @@index([userId])
+  @@index([storeId])
+}
+
+model StoreFavorite {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  storeId   Int
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, storeId])
+  @@index([userId])
+  @@index([storeId])
+}
+
+//////////////////////
+// ENUMS
+//////////////////////
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum Provider {
+  LOCAL
+  GOOGLE
+}
+
+enum StoreType {
+  ADMIN
+  SELLER
+}
+
+enum SellerRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum OrderItemStatus {
+  PENDING
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  SHIPPED
+  DELIVERED
+}
+
+enum AdminStatus {
+  ADMIN_PENDING
+  ADMIN_APPROVED
+  ADMIN_REJECTED
+}
+
+enum NotificationType {
+  ORDER_CREATED
+  ORDER_APPROVED
+  ORDER_REJECTED
+  ORDER_ITEM_APPROVED
+  ORDER_ITEM_REJECTED
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  CANCELED
+  SHIPPED
+  COMPLETED
 }

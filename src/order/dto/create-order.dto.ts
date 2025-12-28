@@ -1,9 +1,5 @@
-// src/order/dto/create-order.dto.ts
-
 import {
   IsArray,
-  IsInt,
-  IsNotEmpty,
   IsNumber,
   IsString,
   Min,
@@ -13,15 +9,12 @@ import {
 import { Type } from 'class-transformer';
 
 export class OrderItemDto {
-  @IsInt()
+  @IsNumber()
   productId: number;
 
-  @IsInt()
+  @IsNumber()
   @Min(1, { message: 'Quantity must be at least 1' })
   quantity: number;
-
-  @IsNumber()
-  price: number;
 }
 
 export class CreateOrderDto {
@@ -31,18 +24,6 @@ export class CreateOrderDto {
   @Type(() => OrderItemDto)
   items: OrderItemDto[];
 
-  @IsNumber()
-  total: number;
-
   @IsString()
-  @IsNotEmpty({ message: 'City is required' })
-  city: string;
-
-  @IsString()
-  @IsNotEmpty({ message: 'Address is required' })
   address: string;
-
-  @IsString()
-  @IsNotEmpty({ message: 'Phone is required' })
-  phone: string;
 }

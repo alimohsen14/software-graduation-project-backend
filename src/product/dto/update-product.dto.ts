@@ -51,4 +51,8 @@ export class UpdateProductDto {
   @IsInt()
   @Min(0)
   reviewsCount?: number;
+
+  @IsOptional()
+  @IsString()
+  badge?: string;
 }

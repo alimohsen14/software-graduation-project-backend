@@ -35,7 +35,7 @@ export class AuthService {
     private mailService: MailService,
     private jwtService: JwtService,
     private config: ConfigService,
-  ) {}
+  ) { }
 
   // ----------------------------------------------------
   // 🔹 SIGNUP (Normal)
@@ -220,12 +220,21 @@ export class AuthService {
         id: true,
         name: true,
         email: true,
+        isSeller: true,
+        isAdmin: true,
         provider: true,
         age: true,
         gender: true,
         country: true,
         createdAt: true,
         updatedAt: true,
+        store: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+          },
+        },
       },
     });
 
@@ -255,12 +264,21 @@ export class AuthService {
         id: true,
         name: true,
         email: true,
+        isSeller: true,
+        isAdmin: true,
         provider: true,
         age: true,
         gender: true,
         country: true,
         createdAt: true,
         updatedAt: true,
+        store: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+          },
+        },
       },
     });
 

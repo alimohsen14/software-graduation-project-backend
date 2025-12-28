@@ -22,78 +22,17 @@ import { SellerOrAdminGuard } from 'src/auth/seller-or-admin.guard';
 import { MarketplaceService } from 'src/marketplace/marketplace.service';
 import { MarketplaceQueryDto } from 'src/marketplace/dto/marketplace-query.dto';
 
+import { StoreSocialService } from './store-social.service';
+
 @Controller('stores')
 export class StoreController {
     constructor(
         private readonly storeService: StoreService,
         private readonly marketplaceService: MarketplaceService,
+        private readonly storeSocialService: StoreSocialService,
     ) { }
 
-    // =========================
-    // Public: get all stores
-    // =========================
-    @Get()
-    findAll() {
-        return this.storeService.findAll();
-    }
-
-    // =========================
-    // Public: get official store
-    // =========================
-    @Get('official')
-    getOfficialStore() {
-        return this.storeService.getOfficialStore();
-    }
-
-    // =========================
-    // Seller: get my store
-    // =========================
-    @UseGuards(JwtAuthGuard, SellerGuard)
-    @Get('my-store')
-    getMyStore(@Req() req) {
-        return this.storeService.findByOwnerId(req.user.id);
-    }
-
-    // =========================
-    // Public: get store by ID
-    // =========================
-    @Get(':id')
-    findOne(@Param('id', ParseIntPipe) id: number) {
-        return this.storeService.findOne(id);
-    }
-
-    // =========================
-    // Public: get store products
-    // =========================
-    @Get(':id/products')
-    findStoreProducts(
-        @Param('id', ParseIntPipe) id: number,
-        @Query() query: MarketplaceQueryDto,
-    ) {
-        return this.marketplaceService.findProductsByStore(id, query);
-    }
-
-    // =========================
-    // Seller: create store
-    // =========================
-    @UseGuards(JwtAuthGuard, SellerGuard)
-    @Post()
-    create(@Req() req, @Body() dto: CreateStoreDto) {
-        return this.storeService.create(req.user.id, dto);
-    }
-
-    // =========================
-    // Seller/Admin: update store
-    // =========================
-    @UseGuards(JwtAuthGuard, SellerOrAdminGuard)
-    @Patch(':id')
-    update(
-        @Param('id', ParseIntPipe) id: number,
-        @Req() req,
-        @Body() dto: UpdateStoreDto,
-    ) {
-        return this.storeService.update(id, req.user.id, req.user.isAdmin, dto);
-    }
+    // ... (existing code)
 
     // =========================
     // Admin: delete store
@@ -102,6 +41,39 @@ export class StoreController {
     @Delete(':id')
     remove(@Param('id', ParseIntPipe) id: number) {
         return this.storeService.remove(id);
+    }
+
+    // =========================
+    // SOCIAL ACTIONS
+    // =========================
+    @Post(':id/follow')
+    @UseGuards(JwtAuthGuard)
+    followStore(@Req() req, @Param('id', ParseIntPipe) id: number) {
+        return this.storeSocialService.followStore(req.user.id, id);
+    }
+
+    @Delete(':id/follow')
+    @UseGuards(JwtAuthGuard)
+    unfollowStore(@Req() req, @Param('id', ParseIntPipe) id: number) {
+        return this.storeSocialService.unfollowStore(req.user.id, id);
+    }
+
+    @Post(':id/favorite')
+    @UseGuards(JwtAuthGuard)
+    favoriteStore(@Req() req, @Param('id', ParseIntPipe) id: number) {
+        return this.storeSocialService.favoriteStore(req.user.id, id);
+    }
+
+    @Delete(':id/favorite')
+    @UseGuards(JwtAuthGuard)
+    unfavoriteStore(@Req() req, @Param('id', ParseIntPipe) id: number) {
+        return this.storeSocialService.unfavoriteStore(req.user.id, id);
+    }
+
+    @Get(':id/social-status')
+    @UseGuards(JwtAuthGuard)
+    getSocialStatus(@Req() req, @Param('id', ParseIntPipe) id: number) {
+        return this.storeSocialService.getStoreSocialStatus(req.user.id, id);
     }
 }
 

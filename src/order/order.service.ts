@@ -17,19 +17,11 @@ export class OrderService {
 
   /**
    * Create order with stock validation and atomic stock deduction.
-   * Sets adminStatus to ADMIN_PENDING and creates ORDER_CREATED notification.
+   * Creates OrderItems with specific storeId for splitting.
    */
   async create(userId: number, dto: CreateOrderDto) {
     if (!dto.items || dto.items.length === 0) {
       throw new BadRequestException('Order must contain at least one item');
-    }
-
-    for (const item of dto.items) {
-      if (item.quantity < 1) {
-        throw new BadRequestException(
-          'Quantity must be at least 1 for all items',
-        );
-      }
     }
 
     const order = await this.prisma.$transaction(async (tx) => {
@@ -37,6 +29,7 @@ export class OrderService {
 
       const products = await tx.product.findMany({
         where: { id: { in: productIds } },
+        select: { id: true, price: true, stock: true, storeId: true, name: true } // Select storeId
       });
 
       if (products.length !== productIds.length) {
@@ -63,6 +56,7 @@ export class OrderService {
         calculatedTotal += product.price * item.quantity;
       }
 
+      // Decrement stock
       for (const item of dto.items) {
         await tx.product.update({
           where: { id: item.productId },
@@ -70,22 +64,22 @@ export class OrderService {
         });
       }
 
+      // Create Order with Items (Splitting logic via storeId)
       return tx.order.create({
         data: {
           userId,
           total: calculatedTotal,
           status: 'PENDING',
-          adminStatus: 'ADMIN_PENDING',
-          city: dto.city,
           address: dto.address,
-          phone: dto.phone,
           items: {
             create: dto.items.map((item) => {
               const product = productMap.get(item.productId)!;
               return {
-                productId: item.productId,
                 quantity: item.quantity,
                 priceAtPurchase: product.price,
+                status: 'PENDING_APPROVAL',
+                product: { connect: { id: item.productId } },
+                store: { connect: { id: product.storeId } },
               };
             }),
           },
@@ -94,11 +88,11 @@ export class OrderService {
           items: {
             include: {
               product: {
-                select: {
-                  id: true,
-                  name: true,
-                },
+                select: { id: true, name: true, image: true },
               },
+              store: {
+                select: { id: true, name: true, logo: true },
+              }
             },
           },
         },
@@ -109,7 +103,7 @@ export class OrderService {
       userId,
       type: 'ORDER_CREATED',
       title: 'Order Placed',
-      message: 'Your order from the official store has been placed successfully.',
+      message: 'Your order has been placed successfully.',
       orderId: order.id,
     });
 

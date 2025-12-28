@@ -7,6 +7,7 @@ import {
   Patch,
   Delete,
   UseGuards,
+  Req,
 } from '@nestjs/common';
 import { ProductService } from './product.service';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -16,15 +17,15 @@ import { AdminGuard } from 'src/auth/admin.guard';
 
 @Controller('products')
 export class ProductController {
-  constructor(private readonly productService: ProductService) {}
+  constructor(private readonly productService: ProductService) { }
 
   // =========================
   // Admin: create product
   // =========================
   @UseGuards(JwtAuthGuard, AdminGuard)
   @Post()
-  create(@Body() dto: CreateProductDto) {
-    return this.productService.create(dto);
+  create(@Req() req, @Body() dto: CreateProductDto) {
+    return this.productService.create(dto, req.user.id);
   }
 
   // =========================

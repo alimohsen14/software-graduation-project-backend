@@ -8,6 +8,9 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateStoreDto } from './dto/create-store.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
+import { StoreType } from '@prisma/client';
+import { UpdateSellerStoreDto } from './dto/update-seller-store.dto';
+
 
 @Injectable()
 export class StoreService {
@@ -97,7 +100,7 @@ export class StoreService {
                 description: dto.description,
                 logo: dto.logo,
                 ownerId,
-                isOfficial: false,
+                type: StoreType.SELLER,
             },
             include: {
                 owner: {
@@ -141,6 +144,60 @@ export class StoreService {
     }
 
     // =========================
+    // Update store by ownerId (Seller)
+    // =========================
+    async updateByOwnerId(ownerId: number, dto: UpdateSellerStoreDto) {
+        const store = await this.prisma.store.findUnique({
+            where: { ownerId },
+        });
+
+        if (!store) {
+            throw new NotFoundException('Store not found');
+        }
+
+        return this.prisma.store.update({
+            where: { ownerId },
+            data: dto,
+        });
+    }
+
+    // =========================
+    // Update store logo (Seller)
+    // =========================
+    async updateStoreLogo(ownerId: number, logoUrl: string) {
+        const store = await this.prisma.store.findUnique({
+            where: { ownerId },
+        });
+
+        if (!store) {
+            throw new NotFoundException('Store not found');
+        }
+
+        return this.prisma.store.update({
+            where: { ownerId },
+            data: { logo: logoUrl },
+        });
+    }
+
+    // =========================
+    // Update store image (Seller)
+    // =========================
+    async updateStoreImage(ownerId: number, imageUrl: string) {
+        const store = await this.prisma.store.findUnique({
+            where: { ownerId },
+        });
+
+        if (!store) {
+            throw new NotFoundException('Store not found');
+        }
+
+        return this.prisma.store.update({
+            where: { ownerId },
+            data: { image: imageUrl },
+        });
+    }
+
+    // =========================
     // Delete store (Admin only)
     // =========================
     async remove(id: number) {
@@ -152,8 +209,8 @@ export class StoreService {
             throw new NotFoundException('Store not found');
         }
 
-        if (store.isOfficial) {
-            throw new BadRequestException('Cannot delete the official store');
+        if (store.type === StoreType.ADMIN) {
+            throw new BadRequestException('Cannot delete the admin store');
         }
 
         return this.prisma.store.delete({
@@ -162,11 +219,59 @@ export class StoreService {
     }
 
     // =========================
-    // Get official store
+    // Get admin store
+    // =========================
+    async getAdminStore() {
+        const store = await this.prisma.store.findFirst({
+            where: { type: StoreType.ADMIN },
+            include: {
+                owner: {
+                    select: {
+                        id: true,
+                        name: true,
+                    },
+                },
+                _count: {
+                    select: { products: true },
+                },
+            },
+        });
+
+        return store;
+    }
+
+    // =========================
+    // Get or create admin store
+    // =========================
+    async getOrCreateAdminStore(adminUserId: number) {
+        // First try to find existing admin store
+        let store = await this.prisma.store.findFirst({
+            where: { type: StoreType.ADMIN },
+        });
+
+        if (store) {
+            return store;
+        }
+
+        // Create admin store if it doesn't exist
+        store = await this.prisma.store.create({
+            data: {
+                name: 'Official Soap Store',
+                description: 'The official store for premium soap products',
+                type: StoreType.ADMIN,
+                ownerId: adminUserId,
+            },
+        });
+
+        return store;
+    }
+
+    // =========================
+    // Get official store (backwards compatibility)
     // =========================
     async getOfficialStore() {
         const store = await this.prisma.store.findFirst({
-            where: { isOfficial: true },
+            where: { type: StoreType.ADMIN },
             include: {
                 owner: {
                     select: {
@@ -187,3 +292,4 @@ export class StoreService {
         return store;
     }
 }
+
