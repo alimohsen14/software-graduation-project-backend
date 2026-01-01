@@ -2,18 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { Product } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { BadgeConfigService } from './badge-config.service';
-import { ProductBadges } from './interfaces/badges.interface';
 
 /**
  * Service for calculating product badges based on business rules.
- *
- * Badge Priority (for frontend display):
- * 1. SOLD OUT (highest)
- * 2. HOT + BEST (combined state)
- * 3. BEST SELLER
- * 4. HOT
- * 5. NEW
- * 6. LOW STOCK (warning, not a selling badge)
  */
 @Injectable()
 export class BadgeService {
@@ -25,26 +16,41 @@ export class BadgeService {
     /**
      * Calculate badges for a single product.
      */
-    async calculateBadges(product: Product): Promise<ProductBadges> {
+    async calculateBadges(product: Product): Promise<string[]> {
         const badgesMap = await this.calculateBadgesBatch([product]);
         return badgesMap.get(product.id)!;
     }
 
     /**
      * Calculate badges for multiple products (optimized batch operation).
-     * Uses a single query for best seller data.
      */
     async calculateBadgesBatch(
         products: Product[],
-    ): Promise<Map<number, ProductBadges>> {
+    ): Promise<Map<number, string[]>> {
         const productIds = products.map((p) => p.id);
-        const salesData = await this.getSalesData(productIds);
-        const result = new Map<number, ProductBadges>();
+        const config = this.config.getConfig();
+
+        // 1. Get sales data for HOT (last 24h) and BEST (last 30d)
+        const now = new Date();
+
+        const oneDayAgo = new Date(now);
+        oneDayAgo.setHours(oneDayAgo.getHours() - 24);
+
+        const thirtyDaysAgo = new Date(now);
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - config.bestSellerDays);
+
+        const [hotSalesMap, bestSalesMap] = await Promise.all([
+            this.getSalesCount(productIds, oneDayAgo),
+            this.getSalesCount(productIds, thirtyDaysAgo),
+        ]);
+
+        const result = new Map<number, string[]>();
 
         for (const product of products) {
             const badges = this.computeBadgesForProduct(
                 product,
-                salesData.get(product.id) || 0,
+                hotSalesMap.get(product.id) || 0,
+                bestSalesMap.get(product.id) || 0,
             );
             result.set(product.id, badges);
         }
@@ -57,7 +63,7 @@ export class BadgeService {
      */
     async attachBadgeToProduct<T extends Product>(
         product: T,
-    ): Promise<T & { badges: ProductBadges }> {
+    ): Promise<T & { badges: string[] }> {
         const badges = await this.calculateBadges(product);
         return { ...product, badges };
     }
@@ -67,7 +73,7 @@ export class BadgeService {
      */
     async attachBadgesToProducts<T extends Product>(
         products: T[],
-    ): Promise<(T & { badges: ProductBadges })[]> {
+    ): Promise<(T & { badges: string[] })[]> {
         const badgesMap = await this.calculateBadgesBatch(products);
         return products.map((product) => ({
             ...product,
@@ -77,70 +83,70 @@ export class BadgeService {
 
     /**
      * Compute badge states for a single product (synchronous helper).
+     * Priority: HOT -> BEST -> NEW -> LOW_STOCK
      */
     private computeBadgesForProduct(
         product: Product,
-        totalSales: number,
-    ): ProductBadges {
+        salesLast24h: number,
+        salesLast30d: number,
+    ): string[] {
         const config = this.config.getConfig();
         const now = new Date();
+        const badges: string[] = [];
 
         // SOLD OUT: stock === 0
-        const isSoldOut = product.stock === 0;
+        if (product.stock === 0) {
+            badges.push('SOLD_OUT');
+            return badges; // Stops other badges if sold out
+        }
 
-        // LOW STOCK: stock > 0 && stock <= threshold
-        // Do NOT show low stock if sold out
-        const isLowStock =
-            !isSoldOut &&
-            product.stock > 0 &&
-            product.stock <= config.lowStockThreshold;
+        // 1. HOT: > 20 units sold in last 24 hours
+        if (salesLast24h > config.hotSalesThreshold) {
+            badges.push('HOT');
+        }
 
-        // NEW: createdAt within newProductDays
+        // 2. BEST: >= 30 units sold in last 30 days
+        if (salesLast30d >= config.bestSellerThreshold) {
+            badges.push('BEST');
+        }
+
+        // 3. NEW: product.createdAt within last 3 days
         const createdAt = new Date(product.createdAt);
-        const daysSinceCreation = Math.floor(
-            (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24),
-        );
-        const isNew = daysSinceCreation < config.newProductDays;
+        const daysSinceCreation = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
+        if (daysSinceCreation <= config.newProductDays) {
+            badges.push('NEW');
+        }
 
-        // HOT: manual flag from database
-        const isHot = product.isHot;
+        // 4. LOW_STOCK: product.stock <= 10
+        if (product.stock <= config.lowStockThreshold) {
+            badges.push('LOW_STOCK');
+        }
 
-        // BEST SELLER: total sales >= threshold in last 30 days
-        const isBestSeller = totalSales >= config.bestSellerThreshold;
-
-        return {
-            isSoldOut,
-            isLowStock,
-            isNew,
-            isHot,
-            isBestSeller,
-        };
+        return badges;
     }
 
     /**
-     * Get sales data for best seller calculation.
-     * Aggregates order items from non-canceled orders in the last N days.
-     * Only includes orders with status: PAID, SHIPPED (excluding PENDING and CANCELED).
+     * Get aggregate sales quantity for products since a given date.
+     * Conditions: Order.status = PAID, OrderItem.status IN (APPROVED, SHIPPED)
      */
-    private async getSalesData(
+    private async getSalesCount(
         productIds: number[],
+        sinceDate: Date,
     ): Promise<Map<number, number>> {
         if (productIds.length === 0) {
             return new Map();
         }
 
-        const config = this.config.getConfig();
-        const cutoffDate = new Date();
-        cutoffDate.setDate(cutoffDate.getDate() - config.bestSellerDays);
-
-        // Aggregate sales by product from completed orders
         const salesData = await this.prisma.orderItem.groupBy({
             by: ['productId'],
             where: {
                 productId: { in: productIds },
+                // Item status must be APPROVED or SHIPPED
+                status: { in: ['APPROVED', 'SHIPPED'] },
                 order: {
-                    createdAt: { gte: cutoffDate },
-                    status: { in: ['PAID', 'SHIPPED'] },
+                    createdAt: { gte: sinceDate },
+                    // Parent order must be PAID
+                    status: 'PAID',
                 },
             },
             _sum: {

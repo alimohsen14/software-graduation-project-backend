@@ -27,4 +27,6 @@ export interface BadgeConfig {
     bestSellerThreshold: number;
     /** Time window in days for best seller calculation (default: 30) */
     bestSellerDays: number;
+    /** Minimum units sold in last 24h to qualify as HOT (default: 20) */
+    hotSalesThreshold: number;
 }

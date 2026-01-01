@@ -98,7 +98,8 @@ export class ProductService {
         },
       },
     });
-    return this.badgeService.attachBadgesToProducts(products);
+    const productsWithBadges = await this.badgeService.attachBadgesToProducts(products);
+    return this.attachRatings(productsWithBadges);
   }
 
   // =========================
@@ -118,7 +119,9 @@ export class ProductService {
       throw new NotFoundException('Product not found');
     }
 
-    return this.badgeService.attachBadgeToProduct(product);
+    const productWithBadges = await this.badgeService.attachBadgeToProduct(product);
+    const [finalProduct] = await this.attachRatings([productWithBadges]);
+    return finalProduct;
   }
 
   // =========================
@@ -158,6 +161,49 @@ export class ProductService {
 
     return this.prisma.product.delete({
       where: { id },
+    });
+  }
+
+  // =========================
+  // Helper: Attach Ratings
+  // =========================
+  private async attachRatings<T extends { id: number }>(products: T[]) {
+    if (products.length === 0) return products;
+
+    const productIds = products.map((p) => p.id);
+
+    const ratingsGrouped = await this.prisma.review.groupBy({
+      by: ['productId'],
+      where: {
+        productId: { in: productIds },
+      },
+      _avg: {
+        rating: true,
+      },
+      _count: {
+        _all: true,
+      },
+    });
+
+    const ratingMap = new Map<number, { avgRating: number; reviewsCount: number }>();
+
+    for (const r of ratingsGrouped) {
+      ratingMap.set(r.productId, {
+        avgRating: r._avg.rating || 0,
+        reviewsCount: r._count._all || 0,
+      });
+    }
+
+    return products.map((p) => {
+      const rating = ratingMap.get(p.id) || { avgRating: 0, reviewsCount: 0 };
+      // Round avgRating to 1 decimal if needed, but float is fine.
+      // Usually users want X.Y
+      const avgRounded = rating.avgRating ? Math.round(rating.avgRating * 10) / 10 : 0;
+      return {
+        ...p,
+        avgRating: avgRounded,
+        reviewsCount: rating.reviewsCount,
+      };
     });
   }
 }
