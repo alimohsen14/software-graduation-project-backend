@@ -13,6 +13,13 @@ const storeSelect = {
   logo: true,
 };
 
+export const PRODUCT_CATEGORIES = {
+  PALESTINIAN_FOOD: 'PALESTINIAN_FOOD',
+  PALESTINIAN_LIFESTYLE: 'PALESTINIAN_LIFESTYLE',
+  HANDMADE: 'HANDMADE',
+  PALESTINIAN_HERITAGE: 'PALESTINIAN_HERITAGE',
+};
+
 @Injectable()
 export class ProductService {
   private readonly logger = new Logger(ProductService.name);

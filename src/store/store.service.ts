@@ -37,6 +37,37 @@ export class StoreService {
     }
 
     // =========================
+    // Get public store details
+    // =========================
+    async findPublicStoreById(id: number) {
+        const store = await this.prisma.store.findUnique({
+            where: { id },
+            select: {
+                id: true,
+                name: true,
+                logo: true,
+                description: true,
+                owner: {
+                    select: {
+                        name: true,
+                    },
+                },
+            },
+        });
+
+        if (!store) {
+            throw new NotFoundException('Store not found');
+        }
+
+        // Flatten to include ownerName
+        const { owner, ...rest } = store;
+        return {
+            ...rest,
+            ownerName: owner.name,
+        };
+    }
+
+    // =========================
     // Get store by ID (Public)
     // =========================
     async findOne(id: number) {

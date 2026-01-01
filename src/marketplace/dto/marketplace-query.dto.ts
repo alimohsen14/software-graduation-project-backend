@@ -6,9 +6,6 @@ export class MarketplaceQueryDto {
     @IsString()
     category?: string;
 
-    @IsOptional()
-    @IsString()
-    sort?: 'price_asc' | 'price_desc' | 'newest' | 'best_seller';
 
     @IsOptional()
     @Type(() => Number)

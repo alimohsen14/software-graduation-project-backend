@@ -200,6 +200,26 @@ export class SellerOrderService {
                 data: { stock: { increment: item.quantity } },
             });
 
+            // MOCK PAYMENT INTEGRATION: Handle Refund if order is already PAID
+            const parentOrder = await tx.order.findUnique({
+                where: { id: item.orderId },
+                include: { payments: { where: { status: 'PAID' }, take: 1 } }
+            });
+
+            if (parentOrder && parentOrder.status === 'PAID') {
+                const payment = parentOrder.payments[0];
+                if (payment) {
+                    await tx.refund.create({
+                        data: {
+                            orderItemId: item.id,
+                            paymentId: payment.id,
+                            amount: item.quantity * item.priceAtPurchase,
+                            status: 'REFUNDED',
+                        }
+                    });
+                }
+            }
+
             return result;
         });
 

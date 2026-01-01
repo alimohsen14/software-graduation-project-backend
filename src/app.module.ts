@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { PrismaService } from './prisma/prisma.service';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
@@ -11,9 +12,11 @@ import { StoreModule } from './store/store.module';
 import { MarketplaceModule } from './marketplace/marketplace.module';
 import { SellerModule } from './seller/seller.module';
 import { SellerRequestModule } from './seller-request/seller-request.module';
+import { PaymentModule } from './payment/payment.module';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
     UsersModule,
     AuthModule,
     AiModule,
@@ -25,6 +28,7 @@ import { SellerRequestModule } from './seller-request/seller-request.module';
     MarketplaceModule,
     SellerModule,
     SellerRequestModule,
+    PaymentModule,
   ],
   providers: [PrismaService],
   exports: [PrismaService],

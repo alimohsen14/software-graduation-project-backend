@@ -33,6 +33,29 @@ export class OrderController {
     return this.orderService.create(userId, createOrderDto);
   }
 
+  /**
+   * User: get own orders
+   */
+  @UseGuards(JwtAuthGuard)
+  @Get('my')
+  async getMyOrders(@Req() req) {
+    const userId = req.user.id;
+    return this.orderService.findUserOrders(userId);
+  }
+
+  /**
+   * User: get own order details
+   */
+  @UseGuards(JwtAuthGuard)
+  @Get('my/:id')
+  async getOrderDetails(
+    @Req() req,
+    @Param('id', ParseIntPipe) id: number
+  ) {
+    const userId = req.user.id;
+    return this.orderService.findUserOrderById(id, userId);
+  }
+
   // ========================
   // ADMIN ENDPOINTS
   // ========================

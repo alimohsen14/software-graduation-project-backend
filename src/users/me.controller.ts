@@ -5,7 +5,9 @@ import { StoreSocialService } from 'src/store/store-social.service';
 @Controller('me')
 @UseGuards(JwtAuthGuard)
 export class MeController {
-    constructor(private readonly storeSocialService: StoreSocialService) { }
+    constructor(
+        private readonly storeSocialService: StoreSocialService,
+    ) { }
 
     @Get('followed-stores')
     getFollowedStores(@Req() req) {

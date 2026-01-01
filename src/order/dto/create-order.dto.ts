@@ -5,6 +5,7 @@ import {
   Min,
   ArrayNotEmpty,
   ValidateNested,
+  IsOptional,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -26,4 +27,12 @@ export class CreateOrderDto {
 
   @IsString()
   address: string;
+
+  @IsString()
+  @IsOptional()
+  city?: string;
+
+  @IsString()
+  @IsOptional()
+  phone?: string;
 }

@@ -157,6 +157,7 @@ model Order {
 
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   items         OrderItem[]
+  payments      Payment[]
   notifications Notification[]
 
   @@index([userId])
@@ -180,6 +181,7 @@ model OrderItem {
   order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
   store   Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  refund  Refund?
 
   @@index([orderId])
   @@index([productId])
@@ -204,6 +206,43 @@ model Notification {
 
   @@index([userId])
   @@index([orderId])
+}
+
+//////////////////////
+// PAYMENT
+//////////////////////
+model Payment {
+  id        Int           @id @default(autoincrement())
+  orderId   Int
+  userId    Int
+  amount    Float
+  method    String        @default("MOCK")
+  status    PaymentStatus @default(PENDING)
+  createdAt DateTime      @default(now())
+
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  refunds Refund[]
+
+  @@index([orderId])
+  @@index([userId])
+}
+
+//////////////////////
+// REFUND
+//////////////////////
+model Refund {
+  id          Int      @id @default(autoincrement())
+  orderItemId Int      @unique
+  paymentId   Int
+  amount      Float
+  status      String   @default("REFUNDED")
+  createdAt   DateTime @default(now())
+
+  orderItem OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  payment   Payment   @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([orderItemId])
+  @@index([paymentId])
 }
 
 model StoreFollow {
@@ -287,4 +326,11 @@ enum OrderStatus {
   CANCELED
   SHIPPED
   COMPLETED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
 }

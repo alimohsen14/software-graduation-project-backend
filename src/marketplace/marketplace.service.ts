@@ -23,65 +23,29 @@ export class MarketplaceService {
     // Get all marketplace products with filters
     // =========================
     async findAllProducts(query: MarketplaceQueryDto) {
-        const where: Prisma.ProductWhereInput = {};
-        const orderBy: Prisma.ProductOrderByWithRelationInput[] = [];
+        const { category, minPrice, maxPrice, storeId } = query;
 
-        // Category filter
-        if (query.category) {
-            where.category = query.category;
-        }
-
-        // Price range filter
-        if (query.minPrice !== undefined || query.maxPrice !== undefined) {
-            where.price = {};
-            if (query.minPrice !== undefined) {
-                where.price.gte = query.minPrice;
-            }
-            if (query.maxPrice !== undefined) {
-                where.price.lte = query.maxPrice;
-            }
-        }
-
-        // Store filter
-        if (query.storeId !== undefined) {
-            where.storeId = query.storeId;
-        }
-
-        // Sorting
-        if (query.sort === 'price_asc') {
-            orderBy.push({ price: 'asc' });
-        } else if (query.sort === 'price_desc') {
-            orderBy.push({ price: 'desc' });
-        } else if (query.sort === 'newest') {
-            orderBy.push({ createdAt: 'desc' });
-        } else if (query.sort === 'best_seller') {
-            // For best seller, we'll sort by createdAt desc as fallback
-            // The actual best seller logic is in badges
-            orderBy.push({ createdAt: 'desc' });
-        } else {
-            orderBy.push({ createdAt: 'desc' });
-        }
+        const where: Prisma.ProductWhereInput = {
+            ...(storeId && { storeId }),
+            ...(category && { category }),
+            ...(minPrice || maxPrice
+                ? {
+                    price: {
+                        ...(minPrice && { gte: minPrice }),
+                        ...(maxPrice && { lte: maxPrice }),
+                    },
+                }
+                : {}),
+        };
 
         const products = await this.prisma.product.findMany({
             where,
-            orderBy,
             include: {
                 store: {
                     select: storeSelect,
                 },
             },
         });
-
-        // If best_seller sort, we need to sort by sales
-        if (query.sort === 'best_seller') {
-            const productsWithBadges = await this.badgeService.attachBadgesToProducts(products);
-            // Sort by best seller flag first, then by date
-            return productsWithBadges.sort((a, b) => {
-                if (a.badges.isBestSeller && !b.badges.isBestSeller) return -1;
-                if (!a.badges.isBestSeller && b.badges.isBestSeller) return 1;
-                return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-            });
-        }
 
         return this.badgeService.attachBadgesToProducts(products);
     }
@@ -90,39 +54,23 @@ export class MarketplaceService {
     // Get products by store ID
     // =========================
     async findProductsByStore(storeId: number, query: MarketplaceQueryDto) {
-        const where: Prisma.ProductWhereInput = { storeId };
-        const orderBy: Prisma.ProductOrderByWithRelationInput[] = [];
+        const { category, minPrice, maxPrice } = query;
 
-        // Category filter
-        if (query.category) {
-            where.category = query.category;
-        }
-
-        // Price range filter
-        if (query.minPrice !== undefined || query.maxPrice !== undefined) {
-            where.price = {};
-            if (query.minPrice !== undefined) {
-                where.price.gte = query.minPrice;
-            }
-            if (query.maxPrice !== undefined) {
-                where.price.lte = query.maxPrice;
-            }
-        }
-
-        // Sorting
-        if (query.sort === 'price_asc') {
-            orderBy.push({ price: 'asc' });
-        } else if (query.sort === 'price_desc') {
-            orderBy.push({ price: 'desc' });
-        } else if (query.sort === 'newest') {
-            orderBy.push({ createdAt: 'desc' });
-        } else {
-            orderBy.push({ createdAt: 'desc' });
-        }
+        const where: Prisma.ProductWhereInput = {
+            storeId,
+            ...(category && { category }),
+            ...(minPrice || maxPrice
+                ? {
+                    price: {
+                        ...(minPrice && { gte: minPrice }),
+                        ...(maxPrice && { lte: maxPrice }),
+                    },
+                }
+                : {}),
+        };
 
         const products = await this.prisma.product.findMany({
             where,
-            orderBy,
             include: {
                 store: {
                     select: storeSelect,

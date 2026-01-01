@@ -24,16 +24,36 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly config: ConfigService,
-  ) {}
+  ) { }
+
+  private getCookieOptions() {
+    return {
+      httpOnly: true,
+      sameSite: 'lax' as const,
+      secure: this.config.get<string>('NODE_ENV') === 'production',
+      path: '/',
+    };
+  }
 
   @Post('signup')
-  signup(@Body() dto: SignUpDto) {
-    return this.authService.signup(dto);
+  async signup(
+    @Body() dto: SignUpDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.signup(dto);
+    res.cookie('accessToken', result.tokens.accessToken, this.getCookieOptions());
+
+    const { tokens, ...response } = result;
+    return response;
   }
 
   @Post('login')
-  login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
+  async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
+    const result = await this.authService.login(dto);
+    res.cookie('accessToken', result.tokens.accessToken, this.getCookieOptions());
+
+    const { tokens, ...response } = result;
+    return response;
   }
 
   @Post('refresh')
@@ -47,6 +67,14 @@ export class AuthController {
     const userId = req.user.id;
     const user = await this.authService.getUserProfile(userId);
     return { message: 'User profile fetched successfully', user };
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Get('me')
+  async getMe(@Req() req) {
+    const userId = req.user.id;
+    const user = await this.authService.getUserProfile(userId);
+    return user;
   }
 
   @UseGuards(AuthGuard('jwt'))
@@ -73,8 +101,19 @@ export class AuthController {
   }
 
   @Post('logout')
-  logout(@Body('userId') userId: number) {
-    return this.authService.logout(userId);
+  async logout(
+    @Req() req,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    // If user is authenticated via cookie, we can get id from req.user
+    // If not, we just clear the cookie anyway
+    const userId = req.user?.id;
+    if (userId) {
+      await this.authService.logout(userId);
+    }
+
+    res.clearCookie('accessToken', this.getCookieOptions());
+    return { message: 'Logout successful' };
   }
 
   @Post('forgot-password')
@@ -99,19 +138,23 @@ export class AuthController {
 
     const token = encodeURIComponent(result.tokens.accessToken);
 
+    // Set cookie for all users
+    res.cookie('accessToken', result.tokens.accessToken, this.getCookieOptions());
+
     if (result.isNewUser) {
       return res.redirect(
         `${frontend}/signup?google=true&email=${encodeURIComponent(
           result.user.email,
-        )}&token=${token}`,
+        )}`, // Removed token from URL
       );
     }
 
-    return res.redirect(`${frontend}/google-redirect?token=${token}`);
+    // Redirect without token in URL
+    return res.redirect(`${frontend}/google-redirect`);
   }
 
   @Post('complete-google-signup')
-  completeGoogleSignup(
+  async completeGoogleSignup(
     @Body()
     body: {
       token: string;
@@ -120,7 +163,13 @@ export class AuthController {
       gender: 'MALE' | 'FEMALE';
       country?: string;
     },
+    @Res({ passthrough: true }) res: Response,
   ) {
-    return this.authService.completeGoogleSignup(body);
+    const result = await this.authService.completeGoogleSignup(body);
+
+    res.cookie('accessToken', result.tokens.accessToken, this.getCookieOptions());
+
+    const { tokens, ...response } = result;
+    return response;
   }
 }

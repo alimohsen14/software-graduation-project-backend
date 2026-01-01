@@ -32,7 +32,13 @@ export class StoreController {
         private readonly storeSocialService: StoreSocialService,
     ) { }
 
-    // ... (existing code)
+    // =========================
+    // Public: get store details
+    // =========================
+    @Get(':id')
+    getPublicStore(@Param('id', ParseIntPipe) id: number) {
+        return this.storeService.findPublicStoreById(id);
+    }
 
     // =========================
     // Admin: delete store

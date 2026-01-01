@@ -71,6 +71,8 @@ export class OrderService {
           total: calculatedTotal,
           status: 'PENDING',
           address: dto.address,
+          city: dto.city,
+          phone: dto.phone,
           items: {
             create: dto.items.map((item) => {
               const product = productMap.get(item.productId)!;
@@ -111,12 +113,66 @@ export class OrderService {
   }
 
   /**
+   * User: get own orders
+   */
+  async findUserOrders(userId: number) {
+    return this.prisma.order.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        payments: true,
+        items: {
+          include: {
+            product: {
+              select: { id: true, name: true, image: true },
+            },
+            store: {
+              select: { id: true, name: true, logo: true },
+            },
+            refund: true,
+          },
+        },
+      },
+    });
+  }
+
+  /**
+   * User: get own order details
+   */
+  async findUserOrderById(orderId: number, userId: number) {
+    const order = await this.prisma.order.findFirst({
+      where: { id: orderId, userId },
+      include: {
+        payments: true,
+        items: {
+          include: {
+            product: {
+              select: { id: true, name: true, image: true },
+            },
+            store: {
+              select: { id: true, name: true, logo: true },
+            },
+            refund: true,
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException(`Order with ID ${orderId} not found`);
+    }
+
+    return order;
+  }
+
+  /**
    * Get all orders (admin only)
    */
   async findAll() {
     return this.prisma.order.findMany({
       orderBy: { createdAt: 'desc' },
       include: {
+        payments: true,
         user: {
           select: {
             id: true,
@@ -132,6 +188,7 @@ export class OrderService {
                 name: true,
               },
             },
+            refund: true,
           },
         },
       },
@@ -146,6 +203,7 @@ export class OrderService {
       where: { adminStatus: 'ADMIN_PENDING' },
       orderBy: { createdAt: 'desc' },
       include: {
+        payments: true,
         user: {
           select: {
             id: true,
@@ -161,6 +219,7 @@ export class OrderService {
                 name: true,
               },
             },
+            refund: true,
           },
         },
       },
