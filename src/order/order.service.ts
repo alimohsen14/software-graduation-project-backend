@@ -29,7 +29,7 @@ export class OrderService {
 
       const products = await tx.product.findMany({
         where: { id: { in: productIds } },
-        select: { id: true, price: true, stock: true, storeId: true, name: true } // Select storeId
+        select: { id: true, price: true, stock: true, storeId: true, name: true, isActive: true } // Select isActive
       });
 
       if (products.length !== productIds.length) {
@@ -46,6 +46,12 @@ export class OrderService {
 
       for (const item of dto.items) {
         const product = productMap.get(item.productId)!;
+
+        if (!product.isActive) {
+          throw new BadRequestException(
+            `Product "${product.name}" is no longer available for purchase.`,
+          );
+        }
 
         if (product.stock < item.quantity) {
           throw new BadRequestException(

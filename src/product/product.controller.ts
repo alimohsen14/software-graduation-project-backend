@@ -61,4 +61,13 @@ export class ProductController {
   remove(@Param('id') id: string) {
     return this.productService.remove(+id);
   }
+
+  // =========================
+  // Admin: reactivate product
+  // =========================
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Post(':id/reactivate')
+  reactivate(@Param('id') id: string) {
+    return this.productService.reactivate(+id);
+  }
 }

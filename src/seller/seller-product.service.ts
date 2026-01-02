@@ -154,9 +154,16 @@ export class SellerProductService {
             throw new NotFoundException('Product not found in your store');
         }
 
-        return this.prisma.product.delete({
+        if (!product.isActive) {
+            throw new BadRequestException('Product is already disabled');
+        }
+
+        await this.prisma.product.update({
             where: { id: productId },
+            data: { isActive: false },
         });
+
+        return { message: 'Product has been disabled successfully' };
     }
     // =========================
     // Get low stock alerts for seller

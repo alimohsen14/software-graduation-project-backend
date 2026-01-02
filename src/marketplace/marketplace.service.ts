@@ -26,6 +26,7 @@ export class MarketplaceService {
         const { category, minPrice, maxPrice, storeId } = query;
 
         const where: Prisma.ProductWhereInput = {
+            isActive: true,
             ...(storeId && { storeId }),
             ...(category && { category }),
             ...(minPrice || maxPrice
@@ -58,6 +59,7 @@ export class MarketplaceService {
 
         const where: Prisma.ProductWhereInput = {
             storeId,
+            isActive: true,
             ...(category && { category }),
             ...(minPrice || maxPrice
                 ? {
@@ -86,6 +88,7 @@ export class MarketplaceService {
     // =========================
     async getCategories() {
         const products = await this.prisma.product.findMany({
+            where: { isActive: true },
             select: { category: true },
             distinct: ['category'],
         });

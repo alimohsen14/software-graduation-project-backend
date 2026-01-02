@@ -91,6 +91,7 @@ export class ProductService {
   // =========================
   async findAll() {
     const products = await this.prisma.product.findMany({
+      where: { isActive: true },
       orderBy: { createdAt: 'desc' },
       include: {
         store: {
@@ -107,7 +108,7 @@ export class ProductService {
   // =========================
   async findOne(id: number) {
     const product = await this.prisma.product.findUnique({
-      where: { id },
+      where: { id, isActive: true },
       include: {
         store: {
           select: storeSelect,
@@ -151,16 +152,45 @@ export class ProductService {
   // Delete product (Admin)
   // =========================
   async remove(id: number) {
-    const exists = await this.prisma.product.findUnique({
+    const product = await this.prisma.product.findUnique({
       where: { id },
     });
 
-    if (!exists) {
+    if (!product) {
       throw new NotFoundException('Product not found');
     }
 
-    return this.prisma.product.delete({
+    if (!product.isActive) {
+      throw new BadRequestException('Product is already disabled');
+    }
+
+    await this.prisma.product.update({
       where: { id },
+      data: { isActive: false },
+    });
+
+    return { message: 'Product has been disabled successfully' };
+  }
+
+  // =========================
+  // Reactivate product (Admin)
+  // =========================
+  async reactivate(id: number) {
+    const product = await this.prisma.product.findUnique({
+      where: { id },
+    });
+
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    if (product.isActive) {
+      throw new BadRequestException('Product is already active');
+    }
+
+    return this.prisma.product.update({
+      where: { id },
+      data: { isActive: true },
     });
   }
 
