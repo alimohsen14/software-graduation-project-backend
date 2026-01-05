@@ -322,5 +322,65 @@ export class StoreService {
 
         return store;
     }
+
+    /**
+     * Get the Official (ADMIN) store. 
+     * If it does not exist, it automatically creates it using the first available admin user.
+     * This ensures the system is stable and self-heals without manual scripts.
+     */
+    async getOfficialStoreSafe() {
+        // 1. Try to find the existing admin store
+        let store = await this.prisma.store.findFirst({
+            where: { type: StoreType.ADMIN },
+            include: {
+                owner: {
+                    select: {
+                        id: true,
+                        name: true,
+                    },
+                },
+                _count: {
+                    select: { products: true },
+                },
+            },
+        });
+
+        if (store) {
+            return store;
+        }
+
+        // 2. If missing, find the first admin user to own it
+        const firstAdmin = await this.prisma.user.findFirst({
+            where: { isAdmin: true },
+        });
+
+        if (!firstAdmin) {
+            // This is a catastrophic system state (no admins exist), 
+            // but we still want a clear error.
+            throw new NotFoundException('Catastrophic Error: No admin user found to own the Official Store.');
+        }
+
+        // 3. Create the Official Store atomically
+        return this.prisma.store.create({
+            data: {
+                name: 'Official Store',
+                description: 'The official marketplace store for premium products.',
+                type: StoreType.ADMIN,
+                ownerId: firstAdmin.id,
+                logo: 'https://res.cloudinary.com/demo/image/upload/v1625218315/sample.jpg', // Default logo
+            },
+            include: {
+                owner: {
+                    select: {
+                        id: true,
+                        name: true,
+                    },
+                },
+                _count: {
+                    select: { products: true },
+                },
+            },
+        });
+    }
 }
 

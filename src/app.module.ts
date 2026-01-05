@@ -14,6 +14,7 @@ import { SellerModule } from './seller/seller.module';
 import { SellerRequestModule } from './seller-request/seller-request.module';
 import { PaymentModule } from './payment/payment.module';
 import { ReviewsModule } from './reviews/reviews.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { ReviewsModule } from './reviews/reviews.module';
     SellerRequestModule,
     PaymentModule,
     ReviewsModule,
+    AdminModule,
   ],
   providers: [PrismaService],
   exports: [PrismaService],

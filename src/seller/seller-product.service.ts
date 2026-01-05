@@ -10,6 +10,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateProductDto } from 'src/product/dto/create-product.dto';
 import { UpdateProductDto } from 'src/product/dto/update-product.dto';
 import { BadgeService } from 'src/product/badge.service';
+import { ProductManagementService } from 'src/product/product-management.service';
 
 // Store select for consistent response shape
 const storeSelect = {
@@ -25,6 +26,7 @@ export class SellerProductService {
     constructor(
         private prisma: PrismaService,
         private badgeService: BadgeService,
+        private productManagementService: ProductManagementService,
     ) { }
 
     // =========================
@@ -47,18 +49,7 @@ export class SellerProductService {
     // =========================
     async findAll(userId: number) {
         const store = await this.getSellerStore(userId);
-
-        const products = await this.prisma.product.findMany({
-            where: { storeId: store.id },
-            orderBy: { createdAt: 'desc' },
-            include: {
-                store: {
-                    select: storeSelect,
-                },
-            },
-        });
-
-        return this.badgeService.attachBadgesToProducts(products);
+        return this.productManagementService.findAll(store.id);
     }
 
     // =========================
@@ -66,47 +57,15 @@ export class SellerProductService {
     // =========================
     async findOne(userId: number, productId: number) {
         const store = await this.getSellerStore(userId);
-
-        const product = await this.prisma.product.findFirst({
-            where: {
-                id: productId,
-                storeId: store.id,
-            },
-            include: {
-                store: {
-                    select: storeSelect,
-                },
-            },
-        });
-
-        if (!product) {
-            throw new NotFoundException('Product not found in your store');
-        }
-
-        return this.badgeService.attachBadgeToProduct(product);
+        return this.productManagementService.findOne(store.id, productId);
     }
 
     // =========================
     // Create product for seller's store
     // =========================
     async create(userId: number, dto: CreateProductDto) {
-        this.logger.log(`Seller creating product: ${dto.name} (User: ${userId})`);
         const store = await this.getSellerStore(userId);
-        this.logger.log(`Using Seller Store ID: ${store.id}`);
-
-        const product = await this.prisma.product.create({
-            data: {
-                ...dto,
-                storeId: store.id,
-            },
-            include: {
-                store: {
-                    select: storeSelect,
-                },
-            },
-        });
-
-        return this.badgeService.attachBadgeToProduct(product);
+        return this.productManagementService.create(store.id, dto);
     }
 
     // =========================
@@ -114,27 +73,7 @@ export class SellerProductService {
     // =========================
     async update(userId: number, productId: number, dto: UpdateProductDto) {
         const store = await this.getSellerStore(userId);
-
-        const product = await this.prisma.product.findFirst({
-            where: {
-                id: productId,
-                storeId: store.id,
-            },
-        });
-
-        if (!product) {
-            throw new NotFoundException('Product not found in your store');
-        }
-
-        return this.prisma.product.update({
-            where: { id: productId },
-            data: dto,
-            include: {
-                store: {
-                    select: storeSelect,
-                },
-            },
-        });
+        return this.productManagementService.update(store.id, productId, dto);
     }
 
     // =========================
@@ -142,52 +81,15 @@ export class SellerProductService {
     // =========================
     async remove(userId: number, productId: number) {
         const store = await this.getSellerStore(userId);
-
-        const product = await this.prisma.product.findFirst({
-            where: {
-                id: productId,
-                storeId: store.id,
-            },
-        });
-
-        if (!product) {
-            throw new NotFoundException('Product not found in your store');
-        }
-
-        if (!product.isActive) {
-            throw new BadRequestException('Product is already disabled');
-        }
-
-        await this.prisma.product.update({
-            where: { id: productId },
-            data: { isActive: false },
-        });
-
-        return { message: 'Product has been disabled successfully' };
+        return this.productManagementService.remove(store.id, productId);
     }
+
     // =========================
     // Get low stock alerts for seller
     // =========================
     async getLowStockProducts(userId: number) {
         const store = await this.getSellerStore(userId);
-
-        // Define low stock threshold (could be moved to config)
-        const LOW_STOCK_THRESHOLD = 5;
-
-        const products = await this.prisma.product.findMany({
-            where: {
-                storeId: store.id,
-                stock: { lte: LOW_STOCK_THRESHOLD },
-            },
-            include: {
-                store: {
-                    select: storeSelect,
-                },
-            },
-            orderBy: { stock: 'asc' },
-        });
-
-        return this.badgeService.attachBadgesToProducts(products);
+        return this.productManagementService.getLowStockProducts(store.id);
     }
 }
 
