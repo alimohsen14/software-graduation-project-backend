@@ -1,5 +1,3 @@
-// prisma/schema.prisma
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -9,63 +7,60 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-//////////////////////
-// USER
-//////////////////////
+/// ///////////////////
+/// ///////////////////
 model User {
-  id                   Int       @id @default(autoincrement())
+  id                   Int             @id @default(autoincrement())
   name                 String
-  email                String    @unique
+  email                String          @unique
   password             String?
   country              String?
   avatar               String?
   age                  Int?
   gender               Gender
-  isSeller             Boolean   @default(false)
-  isAdmin              Boolean   @default(false)
-  provider             Provider  @default(LOCAL)
+  isSeller             Boolean         @default(false)
+  isAdmin              Boolean         @default(false)
+  provider             Provider        @default(LOCAL)
   providerId           String?
   refreshToken         String?
   passwordResetToken   String?
   passwordResetExpires DateTime?
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
-
-  chats         AiChat[]
-  orders        Order[]
-  notifications Notification[]
-  reviews       Review[]
-  store         Store?
-  sellerRequest SellerRequest?
-  follows       StoreFollow[]
-  favorites     StoreFavorite[]
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  chats                AiChat[]
+  notifications        Notification[]
+  orders               Order[]
+  reviews              Review[]
+  sellerRequest        SellerRequest?
+  store                Store?
+  favorites            StoreFavorite[]
+  follows              StoreFollow[]
 }
 
-//////////////////////
-// STORE
-//////////////////////
+/// ///////////////////
+/// ///////////////////
 model Store {
-  id          Int       @id @default(autoincrement())
+  id          Int             @id @default(autoincrement())
   name        String
   description String?
   logo        String?
   image       String?
-  type        StoreType @default(SELLER)
-  ownerId     Int       @unique
-  createdAt   DateTime  @default(now())
-
-  owner      User        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  products   Product[]
-  orderItems OrderItem[]
-  followers  StoreFollow[]
-  favoritedBy StoreFavorite[]
+  type        StoreType       @default(SELLER)
+  ownerId     Int             @unique
+  isActive           Boolean   @default(true)
+  deactivationReason String?
+  createdAt          DateTime  @default(now())
+  orderItems         OrderItem[]
+  products           Product[]
+  owner              User            @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  favoritedBy        StoreFavorite[]
+  followers          StoreFollow[]
 
   @@index([ownerId])
 }
 
-//////////////////////
-// SELLER REQUEST
-//////////////////////
+/// ///////////////////
+/// ///////////////////
 model SellerRequest {
   id              Int                 @id @default(autoincrement())
   userId          Int                 @unique
@@ -79,24 +74,21 @@ model SellerRequest {
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
   processedAt     DateTime?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([status])
 }
 
-//////////////////////
-// AI CHAT
-//////////////////////
+/// ///////////////////
+/// ///////////////////
 model AiChat {
-  id        Int      @id @default(autoincrement())
+  id        Int         @id @default(autoincrement())
   title     String
   userId    Int
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  messages AiMessage[]
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages  AiMessage[]
 }
 
 model AiMessage {
@@ -105,72 +97,63 @@ model AiMessage {
   role      String
   content   String
   createdAt DateTime @default(now())
-
-  chat AiChat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  chat      AiChat   @relation(fields: [chatId], references: [id], onDelete: Cascade)
 }
 
-//////////////////////
-// PRODUCT
-//////////////////////
+/// ///////////////////
+/// ///////////////////
 model Product {
-  id               Int      @id @default(autoincrement())
+  id               Int         @id @default(autoincrement())
   name             String
   shortDescription String?
   fullDescription  String?
   price            Float
   image            String
-  stock            Int      @default(0)
+  stock            Int         @default(0)
   category         String
   badge            String?
-  isHot            Boolean  @default(false)
-  rating           Float?   @default(0)
-  reviewsCount     Int?     @default(0)
+  isHot            Boolean     @default(false)
+  rating           Float?      @default(0)
+  reviewsCount     Int?        @default(0)
   storeId          Int
-  isActive         Boolean  @default(true)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  store      Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  orderItems OrderItem[]
-  reviews    Review[]
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  isActive         Boolean     @default(true)
+  orderItems       OrderItem[]
+  store            Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  reviews          Review[]
 
   @@index([storeId])
 }
 
-//////////////////////
-// ORDER
-//////////////////////
+/// ///////////////////
+/// ///////////////////
 model Order {
-  id        Int         @id @default(autoincrement())
-  userId    Int
-  total     Float
-  status    OrderStatus @default(PENDING)
-
-  city    String?
-  address String?
-  phone   String?
-
-  adminStatus     AdminStatus @default(ADMIN_PENDING)
+  id              Int            @id @default(autoincrement())
+  userId          Int
+  total           Float
+  status          OrderStatus    @default(PENDING)
+  city            String?
+  address         String?
+  phone           String?
+  adminStatus     AdminStatus    @default(ADMIN_PENDING)
   approvedAt      DateTime?
   rejectedAt      DateTime?
   rejectionReason String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  items         OrderItem[]
-  payments      Payment[]
-  notifications Notification[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  notifications   Notification[]
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items           OrderItem[]
+  payments        Payment[]
 
   @@index([userId])
   @@index([status])
   @@index([adminStatus])
 }
 
-//////////////////////
-// REVIEW
-//////////////////////
+/// ///////////////////
+/// ///////////////////
 model Review {
   id        Int      @id @default(autoincrement())
   rating    Int
@@ -180,18 +163,16 @@ model Review {
   userId    Int
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([productId, userId])
   @@index([productId])
   @@index([userId])
 }
 
-//////////////////////
-// ORDER ITEM (SPLIT)
-//////////////////////
+/// ///////////////////
+/// ///////////////////
 model OrderItem {
   id              Int             @id @default(autoincrement())
   orderId         Int
@@ -201,20 +182,18 @@ model OrderItem {
   priceAtPurchase Float
   status          OrderItemStatus
   rejectReason    String?
-
-  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
-  store   Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  refund  Refund?
+  order           Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product         Product         @relation(fields: [productId], references: [id])
+  store           Store           @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  refund          Refund?
 
   @@index([orderId])
   @@index([productId])
   @@index([storeId])
 }
 
-//////////////////////
-// NOTIFICATION
-//////////////////////
+/// ///////////////////
+/// ///////////////////
 model Notification {
   id        Int              @id @default(autoincrement())
   userId    Int
@@ -224,17 +203,15 @@ model Notification {
   isRead    Boolean          @default(false)
   orderId   Int?
   createdAt DateTime         @default(now())
-
-  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  order Order? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  order     Order?           @relation(fields: [orderId], references: [id])
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([orderId])
 }
 
-//////////////////////
-// PAYMENT
-//////////////////////
+/// ///////////////////
+/// ///////////////////
 model Payment {
   id        Int           @id @default(autoincrement())
   orderId   Int
@@ -243,27 +220,24 @@ model Payment {
   method    String        @default("MOCK")
   status    PaymentStatus @default(PENDING)
   createdAt DateTime      @default(now())
-
-  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  refunds Refund[]
+  order     Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  refunds   Refund[]
 
   @@index([orderId])
   @@index([userId])
 }
 
-//////////////////////
-// REFUND
-//////////////////////
+/// ///////////////////
+/// ///////////////////
 model Refund {
-  id          Int      @id @default(autoincrement())
-  orderItemId Int      @unique
+  id          Int       @id @default(autoincrement())
+  orderItemId Int       @unique
   paymentId   Int
   amount      Float
-  status      String   @default("REFUNDED")
-  createdAt   DateTime @default(now())
-
-  orderItem OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
-  payment   Payment   @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  status      String    @default("REFUNDED")
+  createdAt   DateTime  @default(now())
+  orderItem   OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  payment     Payment   @relation(fields: [paymentId], references: [id], onDelete: Cascade)
 
   @@index([orderItemId])
   @@index([paymentId])
@@ -274,9 +248,8 @@ model StoreFollow {
   userId    Int
   storeId   Int
   createdAt DateTime @default(now())
-
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, storeId])
   @@index([userId])
@@ -288,18 +261,16 @@ model StoreFavorite {
   userId    Int
   storeId   Int
   createdAt DateTime @default(now())
-
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, storeId])
   @@index([userId])
   @@index([storeId])
 }
 
-//////////////////////
-// ENUMS
-//////////////////////
+/// ///////////////////
+/// ///////////////////
 enum Gender {
   MALE
   FEMALE

@@ -34,4 +34,19 @@ export class AdminAnalyticsController {
             search,
         });
     }
+
+    @Get('global')
+    async getGlobalAnalytics() {
+        return this.analyticsService.getGlobalAnalytics();
+    }
+
+    @Get('trends')
+    async getRevenueTrends(@Query('period') period?: 'daily' | 'monthly') {
+        return this.analyticsService.getRevenueTrends(period);
+    }
+
+    @Get('categories')
+    async getCategoryAnalytics() {
+        return this.analyticsService.getCategoryAnalytics();
+    }
 }

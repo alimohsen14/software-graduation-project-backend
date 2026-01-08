@@ -1,4 +1,3 @@
-
 import { Module } from '@nestjs/common';
 import { AdminStoreProductsController } from './admin-store-products.controller';
 import { AdminStoreController } from './admin-store.controller';
@@ -9,9 +8,16 @@ import { ProductModule } from '../product/product.module';
 import { StoreModule } from '../store/store.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { OrderModule } from '../order/order.module';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
-    imports: [PrismaModule, ProductModule, StoreModule, OrderModule],
+    imports: [
+        PrismaModule,
+        ProductModule,
+        StoreModule,
+        OrderModule,
+        NotificationModule
+    ],
     controllers: [
         AdminStoreController,
         AdminStoreProductsController,
