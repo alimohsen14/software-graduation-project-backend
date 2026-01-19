@@ -27,21 +27,24 @@ export class AuthController {
   ) { }
 
   private getCookieOptions() {
+    const isProd = this.config.get<string>('NODE_ENV') === 'production';
     return {
       httpOnly: true,
-      sameSite: 'lax' as const,
-      secure: this.config.get<string>('NODE_ENV') === 'production',
+      secure: isProd,
+      sameSite: (isProd ? 'none' : 'lax') as 'none' | 'lax',
       path: '/',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     };
   }
 
-  @Post('signup')
   async signup(
     @Body() dto: SignUpDto,
     @Res({ passthrough: true }) res: Response,
   ) {
+    console.log(`[Auth] Signup attempt for email: ${dto.email}`);
     const result = await this.authService.signup(dto);
     res.cookie('accessToken', result.tokens.accessToken, this.getCookieOptions());
+    console.log(`[Auth] Signup successful for email: ${dto.email}`);
 
     const { tokens, ...response } = result;
     return response;
@@ -49,8 +52,10 @@ export class AuthController {
 
   @Post('login')
   async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
+    console.log(`[Auth] Login attempt for email: ${dto.email}`);
     const result = await this.authService.login(dto);
     res.cookie('accessToken', result.tokens.accessToken, this.getCookieOptions());
+    console.log(`[Auth] Login successful for email: ${dto.email}`);
 
     const { tokens, ...response } = result;
     return response;

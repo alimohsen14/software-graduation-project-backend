@@ -9,24 +9,22 @@ async function bootstrap() {
 
   app.use(cookieParser());
 
-  // Enable global validation with transformation
   app.useGlobalPipes(new ValidationPipe({
-    transform: true,  // Automatically casts types based on DTO (e.g. string -> number)
-    whitelist: true,  // Strips properties not in DTO (Safety)
+    transform: true,
+    whitelist: true,
   }));
 
-  const configService = app.get(ConfigService);
-  const frontendUrl = configService.get<string>('FRONTEND_URL') || 'http://localhost:3001';
-
   app.enableCors({
-    origin: frontendUrl,
+    origin: [
+      'http://localhost:3001',
+      'http://192.168.1.16:3001',
+    ],
     credentials: true,
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    allowedHeaders: 'Content-Type, Accept, Authorization, Cookie',
   });
 
   const port = process.env.PORT ?? 3000;
-  await app.listen(port);
-  console.log(`🚀 Server is running on http://localhost:${port}`);
+  // Listen on 0.0.0.0 for LAN/mobile access
+  await app.listen(port, '0.0.0.0');
+  console.log(`🚀 Server is running on http://0.0.0.0:${port}`);
 }
 bootstrap();
