@@ -16,13 +16,12 @@ import { JwtAuthGuard } from '../auth/jwt.guard';
 @Controller('ai')
 @UseGuards(JwtAuthGuard)
 export class AiController {
-  constructor(private readonly aiService: AiService) {}
+  constructor(private readonly aiService: AiService) { }
 
 
   @Post('ask')
   async ask(@Body() dto: AskDto, @Req() req: any) {
     const userId = req.user.id;
-    
     return this.aiService.ask(dto.message, dto.lang, userId, dto.chatId);
   }
 
