@@ -35,6 +35,7 @@ model User {
   store                Store?
   favorites            StoreFavorite[]
   follows              StoreFollow[]
+  reports              ProductReport[]
 }
 
 /// ///////////////////
@@ -122,6 +123,7 @@ model Product {
   orderItems       OrderItem[]
   store            Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
   reviews          Review[]
+  reports          ProductReport[]
 
   @@index([storeId])
 }
@@ -328,4 +330,33 @@ enum PaymentStatus {
   PAID
   FAILED
   REFUNDED
+}
+
+model ProductReport {
+  id        String   @id @default(uuid())
+  message   String
+  status    ReportStatus @default(PENDING)
+  createdAt DateTime @default(now())
+
+  productId Int
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([userId])
+}
+
+model AdminNotification {
+  id        String   @id @default(uuid())
+  title     String
+  body      String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+enum ReportStatus {
+  PENDING
+  RESOLVED
 }
