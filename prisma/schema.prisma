@@ -36,6 +36,7 @@ model User {
   favorites            StoreFavorite[]
   follows              StoreFollow[]
   reports              ProductReport[]
+  deviceTokens         UserDeviceToken[]
 }
 
 /// ///////////////////
@@ -315,6 +316,10 @@ enum NotificationType {
   ORDER_REJECTED
   ORDER_ITEM_APPROVED
   ORDER_ITEM_REJECTED
+  STORE_WARNING
+  STORE_DEACTIVATED
+  STORE_REACTIVATED
+  PRODUCT_REPORTED
 }
 
 enum OrderStatus {
@@ -359,4 +364,16 @@ model AdminNotification {
 enum ReportStatus {
   PENDING
   RESOLVED
+}
+
+model UserDeviceToken {
+  id          Int      @id @default(autoincrement())
+  token       String   @unique
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platform    String?  // 'web' | 'android' | 'ios'
+  createdAt   DateTime @default(now())
+  lastUsedAt  DateTime @updatedAt
+
+  @@index([userId])
 }

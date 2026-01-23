@@ -1,10 +1,14 @@
 import { Injectable, BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationService } from '../notification/notification.service';
 import { CreateProductReportDto } from './dto/create-product-report.dto';
 
 @Injectable()
 export class ReportsService {
-    constructor(private prisma: PrismaService) { }
+    constructor(
+        private prisma: PrismaService,
+        private notificationService: NotificationService,
+    ) { }
 
     async createReport(user: any, dto: CreateProductReportDto) {
         if (user.isAdmin) {
@@ -51,12 +55,10 @@ export class ReportsService {
             },
         });
 
-        // 4. Create Admin Notification (DB only)
-        await this.prisma.adminNotification.create({
-            data: {
-                title: 'New product report',
-                body: `Product ${report.product.name} was reported by ${report.user.name}`,
-            },
+        // 4. Create Admin Notification and send Push
+        await this.notificationService.createAdminNotification({
+            title: 'New product report',
+            body: `Product ${report.product.name} was reported by ${report.user.name}`,
         });
 
         return { message: 'Report submitted successfully' };

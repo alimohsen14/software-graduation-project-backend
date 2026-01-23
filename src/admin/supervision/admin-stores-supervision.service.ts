@@ -263,7 +263,7 @@ export class AdminStoresSupervisionService {
 
         await this.notificationService.createNotification({
             userId: store.ownerId,
-            type: 'ORDER_REJECTED', // Using closest available. Ideally should be 'WARNING' or 'SYSTEM_MSG' if enum allowed.
+            type: 'STORE_WARNING',
             title: 'Admin Warning',
             message: message,
         });
@@ -287,7 +287,7 @@ export class AdminStoresSupervisionService {
         // Notify owner about deactivation
         await this.notificationService.createNotification({
             userId: store.ownerId,
-            type: 'ORDER_REJECTED',
+            type: 'STORE_DEACTIVATED',
             title: 'Store Deactivated',
             message: `Your store "${store.name}" has been deactivated by an admin.${reason ? ` Reason: ${reason}` : ''}`,
         });
@@ -317,7 +317,7 @@ export class AdminStoresSupervisionService {
         // Optional: Notify owner about reactivation
         await this.notificationService.createNotification({
             userId: store.ownerId,
-            type: 'ORDER_APPROVED', // Positive notification type
+            type: 'STORE_REACTIVATED',
             title: 'Store Reactivated',
             message: `Your store "${store.name}" has been reactivated by an admin.`,
         });
