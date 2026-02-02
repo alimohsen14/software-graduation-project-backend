@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationType } from '@prisma/client';
 import { PushNotificationService } from '../firebase/push-notification.service';
-import { UsersService } from '../users/users.service';
+import { UsersService } from '../users_temp/users.service';
 
 @Injectable()
 export class NotificationService {

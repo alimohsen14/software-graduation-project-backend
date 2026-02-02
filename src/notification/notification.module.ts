@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { NotificationService } from './notification.service';
 import { NotificationController } from './notification.controller';
 import { PrismaModule } from '../prisma/prisma.module';
-import { UsersModule } from '../users/users.module';
+import { UsersModule } from '../users_temp/users.module';
 import { FirebaseModule } from '../firebase/firebase.module';
 
 @Module({
