@@ -18,10 +18,6 @@ async function bootstrap() {
 
   const configService = app.get(ConfigService);
 
-  // FRONTEND_URLS should be comma-separated
-  // مثال:
-  // Local: http://localhost:3001,http://192.168.1.15:3001
-  // Prod:  https://your-frontend.vercel.app
   const frontendUrls =
     configService
       .get<string>('FRONTEND_URLS')
@@ -30,7 +26,6 @@ async function bootstrap() {
 
   app.enableCors({
     origin: (origin, callback) => {
-      // allow requests with no origin (Postman, server-to-server)
       if (!origin) return callback(null, true);
 
       if (frontendUrls.includes(origin)) {
